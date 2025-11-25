@@ -137,3 +137,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Environment-specific files
+.env.dev
+.env.prod
+.env.sophie
+.env.iftemum
+.env.josh

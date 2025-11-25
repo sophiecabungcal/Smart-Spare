@@ -171,6 +171,50 @@ npm run web            # Run on web
 npx tsc --noEmit       # Type check without emitting files
 ```
 
+## Running Commands for Specific Environments
+
+To run the backend for specific environments (e.g., `dev`, `prod`, `sophie`, `iftemum`, `josh`), you can use the following commands. These commands rely on the `.env` files located in the `backend` directory.
+
+### Example Commands:
+
+- **Development Environment**:
+  ```bash
+  npm run start:dev
+  ```
+
+- **Production Environment**:
+  ```bash
+  npm run start:prod
+  ```
+
+- **Sophie’s Environment**:
+  ```bash
+  npm run start:sophie
+  ```
+
+- **Iftemum’s Environment**:
+  ```bash
+  npm run start:iftemum
+  ```
+
+- **Josh’s Environment**:
+  ```bash
+  npm run start:josh
+  ```
+
+### Adding or Modifying Environments
+
+1. Create a new `.env` file in the `backend` directory (e.g., `.env.newenv`).
+2. Add the necessary environment variables (e.g., `DATABASE_URL`, `JWT_SECRET`).
+3. Add a new script in the `package.json` file:
+   ```json
+   "start:newenv": "dotenv -e .env.newenv -- nest start --watch"
+   ```
+4. Run the new environment:
+   ```bash
+   npm run start:newenv
+   ```
+
 ## Technologies Used
 
 ### Backend
