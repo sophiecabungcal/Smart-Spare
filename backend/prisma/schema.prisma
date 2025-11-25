@@ -1,35 +1,155 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// 1. Configuration
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
+// 2. Enums
+enum CategoryDomain {
+  PANTRY
+  CLOTHING // Future proofing
+}
+
+enum TrackingType {
+  PERISHABLE     // Needs expiry date / condition
+  NON_PERISHABLE // Spices, Salt, etc.
+}
+
+enum ItemStatus {
+  ACTIVE
+  CONSUMED
+  TRASHED
+}
+
+enum UnitOfMeasure {
+  // Volume
+  MILLILITERS
+  LITERS
+  CUPS
+  // Weight
+  GRAMS
+  KILOGRAMS
+  OUNCES
+  POUNDS
+  // Count/Packaging
+  PCS     // Pieces
+  BOX
+  BAG
+  CAN
+  BOTTLE
+  JAR
+  BUNCH
+}
+
+// 3. Entity Models
+
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  password  String
-  firstName String?
-  lastName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  inventory        PantryItem[]
+  favorites        UserFavorite[]
+  
+  // Custom items/categories created by this user
+  customCategories Category[]
+  customItems      ItemDefinition[]
 
   @@map("users")
 }
 
 model Category {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id       String         @id @default(uuid())
+  name     String
+  domain   CategoryDomain @default(PANTRY)
+  isSystem Boolean        @default(false) // true = global, false = user specific
+
+  // Hierarchy (Recursive Relation)
+  parentId String?
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+
+  // Creator (Optional, only if isSystem is false)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Relations
+  items ItemDefinition[]
 
   @@map("categories")
+}
+
+model ItemDefinition {
+  id               String       @id @default(uuid())
+  name             String
+  imageUrl         String?
+  isSystem         Boolean      @default(false)
+  trackingType     TrackingType @default(PERISHABLE)
+  defaultShelfLife Float?       // In Days (e.g. 1.5 days)
+
+  // Relations
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  inventoryInstances PantryItem[]
+
+  @@map("item_definitions")
+}
+
+model PantryItem {
+  id           String         @id @default(uuid())
+  quantity     Float
+  unit         UnitOfMeasure?
+  expiryDate   DateTime?      // The source of truth (calculated from condition or manually set)
+  purchaseDate DateTime       @default(now())
+  status       ItemStatus     @default(ACTIVE)
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  itemId String
+  item   ItemDefinition @relation(fields: [itemId], references: [id])
+
+  @@map("pantry_items")
+}
+
+model Suggestion {
+  id         String   @id @default(uuid())
+  externalId Int?     // ID from Spoonacular/TheMealDB if applicable
+  title      String
+  ingredients String[] // Postgres array of strings (keywords)
+  baseUrl    String?  // API source url
+  sourceUrl  String   // Full recipe URL
+  imageUrl   String?
+
+  // Relations
+  favoritedBy UserFavorite[]
+
+  @@map("suggestions")
+}
+
+model UserFavorite {
+  id String @id @default(uuid())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  suggestionId String
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id])
+
+  // Ensure a user cannot favorite the same recipe twice
+  @@unique([userId, suggestionId])
+  @@map("user_favorites")
 }
